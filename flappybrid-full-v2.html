@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="de-de">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Flappybird</title>
+    <link rel="stylesheet" type="text/css" href="flappystyle.css">
+    <script src="flappycode.js" defer></script>
+</head>
+
+<body>
+    <div id="player"></div>
+    <div id="hindernisoben"></div>
+    <div id="hindernisunten"></div>
+    <div id="lebensanzeige" class="anzeiger"></div>
+    <div id="punkteanzeige" class="anzeiger"></div>
+    <div id="background"></div>
+
+    <div id="todesvorhang"></div>
+    <div id="deathscreen"></div>
+
+    <p class="difficulty" id="difficultytext">andere Schwierigkeit? (Standard ist 2)</p>
+    <form class="difficulty" id="difficultyform">
+        <input class="difficulty" type="number" id="difficulty" name="difficulty" required>
+        <button class="difficulty" id="difficultybutton" type="submit">Bestätigen</button>
+    </form>
+
+    <a id="backbutton" title="zurück" href="..">X</a>
+    <style>
+        :root {
+            --yplayer: 100px;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            overflow: hidden;
+        }
+
+        /*Der einzige Link ist der Zurückknopf*/
+        a {
+            border-style: solid;
+            border-width: 1px;
+            width: 20px;
+            height: 20px;
+            position: absolute;
+            right: 0px;
+            top: 0px;
+            text-align: center;
+
+            background-color: black;
+            color: gray;
+            z-index: 1337;
+        }
+
+        a:hover {
+            background-color: red;
+            color: white;
+        }
+
+        #player {
+            background-color: rgb(240, 208, 65);
+            border-style: solid;
+            border-width: 3px;
+            width: 34px;
+            height: 34px;
+
+            position: absolute;
+            left: 100px;
+        }
+
+        #hindernisoben {
+            border-style: solid;
+            border-width: 3px;
+            width: 34px;
+
+            position: absolute;
+            top: -5px;
+        }
+
+        #hindernisunten {
+            border-style: solid;
+            border-width: 3px;
+            width: 34px;
+
+            position: absolute;
+        }
+
+        .anzeiger {
+            position: absolute;
+            left: 5px;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-size: xx-large;
+        }
+
+        #lebensanzeige {
+            color: red;
+            position: absolute;
+            top: 40px;
+        }
+
+        #punkteanzeige {
+            color: blue;
+            position: absolute;
+            top: 2px;
+        }
+
+        #background {
+            position: fixed;
+            top: -25%;
+            left: -25%;
+            width: 150%;
+            height: 150%;
+            background-color: white;
+            z-index: -1;
+        }
+
+        .difficulty {
+            color: white;
+            background-color: black;
+            position: fixed;
+            font-size: large;
+            left: 45%;
+            top: 52%;
+            z-index: -1002;
+        }
+
+        #difficultytext {
+            left: 27%;
+            top: 50%;
+        }
+
+        #difficultybutton {
+            left: 60%;
+        }
+
+        #todesvorhang {
+            position: fixed;
+            top: -25%;
+            left: -25%;
+            width: 150%;
+            height: 150%;
+            background-color: black;
+            z-index: -1000;
+        }
+
+        #deathscreen {
+            color: white;
+            background-color: black;
+            font-size: 450%;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            position: absolute;
+            top: 38%;
+            left: 25%;
+            z-index: -1001;
+        }
+    </style>
+    <script>
+        //auf die HTML Elemente zugreifen
+        const player = document.getElementById("player");
+        const hindernisoben = document.getElementById("hindernisoben");
+        const hindernisunten = document.getElementById("hindernisunten");
+        const lebensanzeige = document.getElementById("lebensanzeige");
+        const punkteanzeige = document.getElementById("punkteanzeige");
+        const deathscreen = document.getElementById("deathscreen");
+        const todesvorhang = document.getElementById("todesvorhang");
+        const difficultyform = document.querySelectorAll(".difficulty");
+
+        let leben = 3;
+        let punkte = -1;
+        let hit = false;
+        let yplayer = 0;
+        //maus gibt an ob eine Maustaste gedrückt wird
+        let maus = false;
+        //X Koordinate vom Hindernis (window.innerWidth dass direkt beim ersten loop() xhindernis 
+        //zurückgesetzt wird und damit Variablen für die Lochabmessungen erstellt werden)
+        let xhindernis = -50;
+        //für die länge des Lochs die immer kleiner wird
+        let lochlang = 200;
+        //für die Höhe auf der das loch anfängt (am höchsten ist)
+        let lochhoch = Math.floor(Math.random() * ((window.innerHeight - 50) - 51)) + 50;
+        //wie schnell das Spiel ist (herunterfallen, hochfliegen, Hindernis)
+        let speed = 2;
+
+        let treffbar = true;
+
+        // Es gibt cheats: //
+        function help() {
+            console.log("mehr Leben    = l()");
+            console.log("mehr punkte   = p()");
+            console.log("töten         = t()");
+            console.log("kill          = k()");
+            console.log("untreffbar    = d()");
+            console.log("großes Loch   = h()");
+        }
+        function l() { leben += 13370042; console.log("Hier sind mehr Leben!"); }
+        function p() { punkte += 13370042; console.log("Hier sind mehr Punkte!"); }
+        function d() { treffbar = false; console.log("Du wirst nun nicht mehr vom Hindernis getroffen."); }
+        function h() { lochlang = 400; console.log("Du hast jetzt ein richtig dickes Loch."); }
+        function t() { leben = 0; console.log("💀"); }
+        function k() { leben = 0; console.log("💀"); }
+        // --------------- //
+
+        function reset() {
+            //Variablen zurücksetzen
+            leben = 3;
+            punkte = -1;
+            hit = false;
+            yplayer = 0;
+            maus = false;
+            xhindernis = -50;
+            lochlang = 200;
+            lochhoch = Math.floor(Math.random() * ((window.innerHeight - 50) - 51)) + 50;
+
+            //Todesscreen entfernen
+            todesvorhang.style.zIndex = -1000;
+            deathscreen.style.zIndex = -1001;
+            difficultyform.forEach(el => { el.style.zIndex = -1002; });
+        }
+
+        console.log('%cDein ernst?!', 'color: red; font-size: 20px;');
+        console.log('Wenn du cheatest bist du ein [hier beliebige Beleidigunung einfügen]!');
+        console.log('für Hilfe schreibe:   help()');
+
+        function loop() {
+            //wenn man noch lebt soll der ganz normale Code beim nächsten Frame wieder ausgeführt werden
+            if (leben > 0) {
+                //am Anfang jedes durchlaufs soll der Spieler fallen außer er stößt am unterem Rand an
+                if (yplayer < window.innerHeight - 40) {
+                    yplayer += 4 * speed;
+                    //Wenn der Spieler sich unter dem Bildschirmrand befindet...
+                } else if (yplayer < window.innerHeight + 40) {
+                    //...soll er wieder hoch bewegt werden
+                    yplayer = window.innerHeight - 40;
+                }
+
+                //das Hindernis nach links verschieben
+                xhindernis -= 5 * speed;
+
+                //Wenn eine Maustaste gedrückt ist und der Spieler im Spielfeld ist
+                if (maus && yplayer > 0) {
+                    //soll der Spieler nach oben bewegt werden
+                    yplayer -= 8 * speed;
+                }
+
+                //wenn das Hindernis ganz links ist soll es nach rechts zurückgesetzt werden
+                if (xhindernis < -50) {
+                    //bei jedem Durchlauf soll das Loch bis zu einer bestimmten Länge kleiner werden
+                    lochlang -= 2;
+
+                    xhindernis = window.innerWidth + 50;
+                    //und es soll eine neue Variable für die Höhe generiet werden
+                    lochhoch = Math.floor(Math.random() * ((window.innerHeight - 50) - 51)) + 50;
+
+                    //diese soll auch gleich aktualisiert werden (und auch gleich die Lochlänge)
+                    hindernisoben.style.height = lochhoch + "px";
+                    hindernisunten.style.top = (lochhoch + lochlang) + "px";
+                    hindernisunten.style.height = window.innerHeight + "px";
+
+                    //Punkte und Leben refreshen (können sich nur jetzt ändern)
+                    punkte++;
+                    if (hit) {
+                        leben--;
+                        punkte--;
+                        hit = false;
+                    }
+                    punkteanzeige.innerHTML = "Punkte: " + punkte;
+                    lebensanzeige.innerHTML = "Leben:  " + leben;
+                }
+
+                //die neue X-Koordinate vom Hindernis wird im oberen und unteren als Höhe in CSS eingesetzt
+                hindernisoben.style.left = xhindernis + "px";
+                hindernisunten.style.left = xhindernis + "px";
+                //die neue Y-Koordinate vom Spieler wird als Höhe in CSS eingesetzt
+                player.style.top = yplayer + "px";
+
+                //Wenn der Spieler das Hindernis trifft
+                if (((xhindernis >= 100 && xhindernis <= 134) && (yplayer <= lochhoch || yplayer + 34 >= lochhoch + lochlang) && treffbar)) {
+                    //soll sich gemerkt werden dass man in diesem Durchlauf getroffen wurde 
+                    //dass im nächsten Hindernis reset ein Leben abgezogen wird und kein Punkt gegeben wird
+                    hit = true;
+                    //und das Hinternis soll kurz blinken
+                    hindernisoben.style.backgroundColor = "red";
+                    hindernisunten.style.backgroundColor = "red";
+                } else {
+                    hindernisoben.style.backgroundColor = "rgb(85, 240, 65)";
+                    hindernisunten.style.backgroundColor = "rgb(85, 240, 65)";
+                }
+
+            } else {
+                //sonst wird ein Todesscreen angezeigt
+                todesvorhang.style.zIndex = 1000;
+                deathscreen.style.zIndex = 1001;
+                difficultyform.forEach(el => { el.style.zIndex = 1002; });
+
+                deathscreen.innerHTML = "Du bist gestorben! Punkte: " + punkte;
+            }
+
+            //Ruft die loop() funktion im nächsten Frame wieder auf
+            requestAnimationFrame(loop);
+        }
+
+        //Wenn das difficulty Formular ausgefüllt wird und bestätigt wird...
+        document.getElementById('difficultyform').addEventListener('submit', function (event) {
+            event.preventDefault(); //die Seite soll nicht neu geladen werden
+            const difficulty = document.getElementById('difficulty').value; //auslesen was in difficulty eingegeben wurde
+
+            if (isNaN(difficulty)) {
+                window.alert("Du musst eine Zahl eingeben auch wenn ich das Textfeld verändert habe.");
+                //wenn in difficulty eine Nummer/Zahl ist soll fortgefahren werden:
+            } else if (Number(difficulty) == 0) {
+                window.alert("Die 0 ist keine gültige Eingabe! \nDas Spiel würde still stehen.");
+            } else if (Number(difficulty) < 0) {
+                window.alert("Negative zahlen werden automatisch positiv gemacht.");
+                speed = Number(difficulty) * -1;
+                reset();
+            } else {
+                if (Number(difficulty) > 11)
+                    window.alert("Ab einer bestimmten Schwierigkeit gehen die Hitboxen kaputt.");
+                speed = Number(difficulty);
+                reset();
+            }
+        });
+
+        //Wenn eine Maustaste heruntergedrückt wird soll festgehalten werden dass die Maus gerade unten ist
+        document.addEventListener('mousedown', function (event) {
+            maus = true;
+        });
+
+        //Wenn eine Maustaste losgelassen wird wird soll festgehalten werden dass die Maus wieder losgelassen wurde
+        document.addEventListener('mouseup', function (event) {
+            maus = false;
+        });
+
+        //startet die loop() Fuktion
+        loop();
+    </script>
+</body>
+
+</html>
